@@ -1,22 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef } from 'react';
 import { motion } from "framer-motion";
-import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
-import L from "leaflet";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 
-// Fix Leaflet's default icon images for deployed version
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-});
-
-const RISK_COLORS = { HIGH: "#EF4444", MEDIUM: "#F59E0B", LOW: "#10B981" };
-
-// Static cities data - hardcoded for deployment stability
-const STATIC_CITIES = [
+const CITIES = [
   { name: 'Delhi', lat: 28.6139, lng: 77.2090, scams: 487, risk: 'HIGH', trending: 147, topScams: ['OTP Fraud', 'Fake KYC', 'UPI Phishing'] },
   { name: 'Mumbai', lat: 19.0760, lng: 72.8777, scams: 423, risk: 'HIGH', trending: 132, topScams: ['Fake IRCTC Refund', 'Investment Fraud', 'OTP Fraud'] },
   { name: 'Bangalore', lat: 12.9716, lng: 77.5946, scams: 356, risk: 'HIGH', trending: 118, topScams: ['Job Offer Fraud', 'Loan App Scams', 'Fake KYC'] },
@@ -34,204 +21,215 @@ const STATIC_CITIES = [
 export default function Heatmap() {
   const { colors } = useTheme();
   const isMobile = useIsMobile();
-  const [cities, setCities] = useState([]);
-  const [selected, setSelected] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const mapRef = useRef(null);
+  const mapInstanceRef = useRef(null);
 
-  // Initialize with static data and inject Leaflet styles
   useEffect(() => {
-    // Use static data instead of API call
-    setCities(STATIC_CITIES);
-    setLoading(false);
-    
-    // Inject Leaflet popup ALWAYS dark theme CSS (regardless of light/dark mode toggle)
-    if (!document.getElementById("leaflet-dark-theme")) {
-      const styleSheet = document.createElement("style");
-      styleSheet.id = "leaflet-dark-theme";
-      styleSheet.textContent = `
-        .leaflet-popup-content-wrapper {
-          background: #1a1a2e !important;
-          color: #ffffff !important;
-          border: 1px solid #ff4444 !important;
-          border-radius: 8px !important;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.5) !important;
+    // Only initialize map once
+    if (mapInstanceRef.current) return;
+
+    // Wait for Leaflet to be loaded from CDN
+    const L = window.L;
+    if (!L) {
+      console.error('Leaflet library not loaded');
+      return;
+    }
+
+    try {
+      // Create map
+      const map = L.map(mapRef.current, { 
+        attributionControl: true,
+        zoomControl: true 
+      }).setView([20.5937, 78.9629], 5);
+      
+      mapInstanceRef.current = map;
+
+      // Add tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18,
+      }).addTo(map);
+
+      // Add dark theme CSS for popups
+      if (!document.getElementById("leaflet-popup-dark-theme")) {
+        const styleSheet = document.createElement("style");
+        styleSheet.id = "leaflet-popup-dark-theme";
+        styleSheet.textContent = `
+          .leaflet-popup-content-wrapper {
+            background: #1a1a2e !important;
+            color: #ffffff !important;
+            border: 2px solid #ff4444 !important;
+            border-radius: 8px !important;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.8) !important;
+          }
+          .leaflet-popup-tip {
+            background: #1a1a2e !important;
+            border: 2px solid #ff4444 !important;
+          }
+          .leaflet-popup-close-button {
+            color: #ffffff !important;
+            font-size: 20px !important;
+          }
+          .leaflet-popup-content {
+            font-family: system-ui, -apple-system, sans-serif !important;
+            font-size: 13px !important;
+            line-height: 1.5 !important;
+          }
+        `;
+        document.head.appendChild(styleSheet);
+      }
+
+      // Add cities to map
+      CITIES.forEach(city => {
+        const color = city.risk === 'HIGH' ? '#EF4444' : city.risk === 'MEDIUM' ? '#F59E0B' : '#10B981';
+        const radius = Math.min(city.scams / 5, 40);
+
+        // Create circle marker
+        const circle = L.circle([city.lat, city.lng], {
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.6,
+          weight: 2,
+          radius: radius * 1000
+        }).addTo(map);
+
+        // Build popup content
+        const popupContent = `
+          <div style="min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
+            <h3 style="color: #ffffff; font-size: 16px; font-weight: bold; margin: 0 0 8px 0;">🏙️ ${city.name}</h3>
+            <div style="border-bottom: 2px solid #444444; margin-bottom: 8px;"></div>
+            <div style="color: #d1d5db; margin-bottom: 4px;">🚨 <strong>Scam Reports:</strong> ${city.scams}</div>
+            <div style="color: #d1d5db; margin-bottom: 4px;">📈 <strong>Trending:</strong> ↑${city.trending}% this week</div>
+            <div style="color: ${color}; margin-bottom: 12px; font-weight: 600;">⚠️ <strong>Risk Level:</strong> ${city.risk}</div>
+            <div style="border-bottom: 1px solid #444444; margin-bottom: 8px;"></div>
+            <div style="color: #fbbf24; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Top Scams This Week:</div>
+            <div>
+              ${city.topScams.map((scam, idx) => `
+                <div style="color: #e5e7eb; font-size: 12px; padding-bottom: 4px; margin-bottom: 4px; border-bottom: ${idx < city.topScams.length - 1 ? '1px solid #333333' : 'none'};">
+                  <strong>${idx + 1}. ${scam}</strong>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        circle.bindPopup(popupContent, {
+          maxWidth: 300,
+          className: 'leaflet-popup-dark'
+        });
+      });
+
+      // Force resize
+      setTimeout(() => {
+        map.invalidateSize();
+      }, 100);
+
+      // Cleanup function
+      return () => {
+        if (mapInstanceRef.current) {
+          mapInstanceRef.current.remove();
+          mapInstanceRef.current = null;
         }
-        .leaflet-popup-tip {
-          background: #1a1a2e !important;
-        }
-        .leaflet-popup-close-button {
-          color: #ffffff !important;
-        }
-      `;
-      document.head.appendChild(styleSheet);
+      };
+    } catch (error) {
+      console.error('Error initializing map:', error);
     }
   }, []);
 
-  // Force map re-render on component mount for proper Leaflet rendering
-  useEffect(() => {
-    setTimeout(() => {
-      window.dispatchEvent(new Event('resize'));
-    }, 100);
-  }, []);
-
-  // Safe filter with null check
-  const highAlert = cities && cities.length > 0 ? cities.filter((c) => c.risk === "HIGH").map((c) => c.name) : [];
-
-  const getRiskColor = (level) => {
-    return level === "HIGH" ? "#dc2626" : level === "MEDIUM" ? "#f59e0b" : "#22c55e";
-  };
-
-  // Guard: don't render map if no cities data
-  if (!cities || cities.length === 0) return null;
+  // Get high alert cities
+  const highAlert = CITIES.filter(c => c.risk === 'HIGH').map(c => c.name);
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-[calc(100vh-64px)]">
+    <motion.div 
+      initial={{ opacity: 0 }} 
+      animate={{ opacity: 1 }} 
+      exit={{ opacity: 0 }} 
+      className="flex flex-col h-[calc(100vh-64px)]"
+    >
       {/* Alert Banner */}
       {highAlert.length > 0 && (
-        <div className="bg-red-500/10 border-b border-red-500/20 px-4 py-2 flex items-center gap-2">
-          <span className="text-red-400 font-bold text-sm">🔴 HIGH ALERT:</span>
-          <span className="text-red-300 text-sm">{highAlert.join(", ")}</span>
-          <span className="ml-auto text-red-400 text-xs font-semibold">Active now</span>
+        <div style={{
+          backgroundColor: colors.isDark ? 'rgba(220, 38, 38, 0.1)' : 'rgba(255, 220, 220, 0.3)',
+          borderBottom: `1px solid ${colors.isDark ? 'rgba(220, 38, 38, 0.3)' : 'rgba(255, 100, 100, 0.3)'}`,
+          padding: '12px 16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px'
+        }}>
+          <span style={{ color: colors.isDark ? '#ff6666' : '#cc0000', fontWeight: 'bold', fontSize: '14px' }}>
+            🔴 HIGH ALERT:
+          </span>
+          <span style={{ color: colors.isDark ? '#ff8888' : '#dd0000', fontSize: '14px' }}>
+            {highAlert.join(", ")}
+          </span>
+          <span style={{ marginLeft: 'auto', color: colors.isDark ? '#ff6666' : '#cc0000', fontSize: '12px', fontWeight: 'bold' }}>
+            Active now
+          </span>
         </div>
       )}
 
-      {/* Map */}
-      <div className="flex-1 relative" style={{ height: isMobile ? "400px" : "600px", width: '100%' }}>
-        {loading ? (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-gray-400 animate-pulse">Loading map data...</p>
-          </div>
-        ) : (
-          <MapContainer center={[20.5937, 78.9629]} zoom={5} className="h-full w-full" zoomControl={true}>
-            <TileLayer
-              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              attribution='&copy; OpenStreetMap contributors'
-            />
-            {cities.map((city) => (
-              <CircleMarker
-                key={city.name}
-                center={[city.lat, city.lng]}
-                radius={Math.max(8, Math.min(30, city.scams / 15))}
-                pathOptions={{
-                  fillColor: RISK_COLORS[city.risk],
-                  fillOpacity: 0.7,
-                  color: RISK_COLORS[city.risk],
-                  weight: 2,
-                  opacity: 0.9,
-                }}
-              >
-                <Popup minWidth={240}>
-                  <div style={{
-                    minWidth: "240px",
-                    color: "#ffffff",
-                    fontFamily: "system-ui, -apple-system, sans-serif"
-                  }}>
-                    {/* City Name */}
-                    <div style={{
-                      fontSize: "18px",
-                      fontWeight: "900",
-                      color: "#ffffff",
-                      marginBottom: "12px",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "8px"
-                    }}>
-                      🏙️ {city.name}
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{
-                      borderBottom: "2px solid #444444",
-                      marginBottom: "12px"
-                    }} />
-
-                    {/* Stats */}
-                    <div style={{
-                      fontSize: "13px",
-                      color: "#d1d5db",
-                      marginBottom: "4px"
-                    }}>
-                      🚨 <strong>Scam Reports:</strong> {city.scams}
-                    </div>
-                    <div style={{
-                      fontSize: "13px",
-                      color: "#d1d5db",
-                      marginBottom: "4px"
-                    }}>
-                      📈 <strong>Trending:</strong> ↑{city.trending}% this week
-                    </div>
-                    <div style={{
-                      fontSize: "13px",
-                      color: getRiskColor(city.risk),
-                      marginBottom: "12px",
-                      fontWeight: "600"
-                    }}>
-                      ⚠️ <strong>Risk Level:</strong> {city.risk}
-                    </div>
-
-                    {/* Divider */}
-                    <div style={{
-                      borderBottom: "1px solid #444444",
-                      marginBottom: "10px"
-                    }} />
-
-                    {/* Top Scams Header */}
-                    <div style={{
-                      fontSize: "12px",
-                      fontWeight: "700",
-                      color: "#fbbf24",
-                      marginBottom: "8px",
-                      textTransform: "uppercase",
-                      letterSpacing: "0.5px"
-                    }}>
-                      Top Scams This Week:
-                    </div>
-
-                    {/* Scam List */}
-                    <div>
-                      {city.topScams && city.topScams.length > 0 ? city.topScams.map((scam, idx) => (
-                        <div key={idx} style={{
-                          fontSize: "12px",
-                          color: "#e5e7eb",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          paddingBottom: "6px",
-                          marginBottom: "4px",
-                          borderBottom: idx < city.topScams.length - 1 ? "1px solid #333333" : "none"
-                        }}>
-                          <span style={{ fontWeight: "500" }}>
-                            {idx + 1}. {scam}
-                          </span>
-                        </div>
-                      )) : <div style={{ color: "#999", fontSize: "12px" }}>No scam data</div>}
-                    </div>
-                  </div>
-                </Popup>
-              </CircleMarker>
-            ))}
-          </MapContainer>
-        )}
+      {/* Map Container */}
+      <div style={{
+        flex: 1,
+        position: 'relative',
+        height: isMobile ? '400px' : '600px',
+        width: '100%',
+        backgroundColor: colors.isDark ? '#1a1a2e' : '#f5f5f5'
+      }}>
+        <div 
+          ref={mapRef} 
+          style={{
+            height: '100%',
+            width: '100%',
+            borderRadius: '0'
+          }}
+        />
       </div>
 
       {/* Legend */}
-      <div className="bg-[#111827] border-t border-[#1F2937] px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {Object.entries(RISK_COLORS).map(([level, color]) => (
-            <div key={level} className="flex items-center gap-1.5">
-              <div className="w-3 h-3 rounded-full" style={{ background: color }} />
-              <span className="text-xs text-gray-400">{level}</span>
+      <div style={{
+        backgroundColor: colors.bgSecondary,
+        borderTop: `1px solid ${colors.borderColor}`,
+        padding: '12px 16px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: isMobile ? 'wrap' : 'nowrap',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+          {[
+            { level: 'HIGH', color: '#EF4444' },
+            { level: 'MEDIUM', color: '#F59E0B' },
+            { level: 'LOW', color: '#10B981' }
+          ].map(({ level, color }) => (
+            <div key={level} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: color }} />
+              <span style={{ fontSize: '12px', color: colors.textSecondary }}>{level}</span>
             </div>
           ))}
-          <span className="text-xs text-gray-500">Circle size = scam volume</span>
+          <span style={{ fontSize: '12px', color: colors.textSecondary }}>• Circle size = scam volume</span>
         </div>
 
         {/* Ticker */}
-        <div className="overflow-hidden" style={{ display: isMobile ? "block" : "block", width: isMobile ? "100%" : "256px" }}>
-          <div className="ticker-anim" style={{ fontSize: isMobile ? "11px" : "12px", color: "#fbbf24" }}>
+        <div style={{ display: isMobile ? 'none' : 'block', overflow: 'hidden', width: '256px' }}>
+          <div style={{ 
+            fontSize: '12px', 
+            color: '#fbbf24',
+            animation: 'scroll 20s linear infinite',
+            whiteSpace: 'nowrap'
+          }}>
             🚨 OTP Fraud rising in Delhi +47% &nbsp;&nbsp; 🚨 Fake IRCTC scam spreading in Mumbai &nbsp;&nbsp; 🚨 Job fraud alert in Bangalore &nbsp;&nbsp;
           </div>
         </div>
       </div>
+
+      <style>{`
+        @keyframes scroll {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
     </motion.div>
   );
 }
