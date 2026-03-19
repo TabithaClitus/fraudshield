@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
 import L from "leaflet";
-import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 
@@ -16,6 +15,22 @@ L.Icon.Default.mergeOptions({
 
 const RISK_COLORS = { HIGH: "#EF4444", MEDIUM: "#F59E0B", LOW: "#10B981" };
 
+// Static cities data - hardcoded for deployment stability
+const STATIC_CITIES = [
+  { name: 'Delhi', lat: 28.6139, lng: 77.2090, scams: 487, risk: 'HIGH', trending: 147, topScams: ['OTP Fraud', 'Fake KYC', 'UPI Phishing'] },
+  { name: 'Mumbai', lat: 19.0760, lng: 72.8777, scams: 423, risk: 'HIGH', trending: 132, topScams: ['Fake IRCTC Refund', 'Investment Fraud', 'OTP Fraud'] },
+  { name: 'Bangalore', lat: 12.9716, lng: 77.5946, scams: 356, risk: 'HIGH', trending: 118, topScams: ['Job Offer Fraud', 'Loan App Scams', 'Fake KYC'] },
+  { name: 'Hyderabad', lat: 17.3850, lng: 78.4867, scams: 298, risk: 'HIGH', trending: 95, topScams: ['Investment Fraud', 'OTP Fraud', 'Fake KYC'] },
+  { name: 'Chennai', lat: 13.0827, lng: 80.2707, scams: 187, risk: 'MEDIUM', trending: 67, topScams: ['UPI Phishing', 'Fake KYC', 'Job Offer Fraud'] },
+  { name: 'Kolkata', lat: 22.5726, lng: 88.3639, scams: 234, risk: 'HIGH', trending: 89, topScams: ['Fake IRCTC Refund', 'OTP Fraud', 'Prize Scam'] },
+  { name: 'Pune', lat: 18.5204, lng: 73.8567, scams: 198, risk: 'HIGH', trending: 76, topScams: ['Investment Fraud', 'Loan App Scams', 'OTP Fraud'] },
+  { name: 'Ahmedabad', lat: 23.0225, lng: 72.5714, scams: 167, risk: 'HIGH', trending: 54, topScams: ['Fake KYC', 'OTP Fraud', 'Prize Scam'] },
+  { name: 'Jaipur', lat: 26.9124, lng: 75.7873, scams: 134, risk: 'MEDIUM', trending: 43, topScams: ['OTP Fraud', 'Fake KYC', 'Investment Fraud'] },
+  { name: 'Lucknow', lat: 26.8467, lng: 80.9462, scams: 112, risk: 'MEDIUM', trending: 38, topScams: ['Fake KYC', 'Prize Scam', 'OTP Fraud'] },
+  { name: 'Surat', lat: 21.1702, lng: 72.8311, scams: 98, risk: 'MEDIUM', trending: 31, topScams: ['Investment Fraud', 'OTP Fraud', 'Fake KYC'] },
+  { name: 'Kochi', lat: 9.9312, lng: 76.2673, scams: 76, risk: 'LOW', trending: 22, topScams: ['OTP Fraud', 'Fake KYC', 'Job Offer Fraud'] },
+];
+
 export default function Heatmap() {
   const { colors } = useTheme();
   const isMobile = useIsMobile();
@@ -23,8 +38,11 @@ export default function Heatmap() {
   const [selected, setSelected] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Initialize with static data and inject Leaflet styles
   useEffect(() => {
-    axios.get("/api/heatmap").then((r) => { setCities(r.data.cities); setLoading(false); }).catch(() => setLoading(false));
+    // Use static data instead of API call
+    setCities(STATIC_CITIES);
+    setLoading(false);
     
     // Inject Leaflet popup ALWAYS dark theme CSS (regardless of light/dark mode toggle)
     if (!document.getElementById("leaflet-dark-theme")) {
@@ -56,11 +74,15 @@ export default function Heatmap() {
     }, 100);
   }, []);
 
-  const highAlert = cities.filter((c) => c.risk_level === "HIGH").map((c) => c.name);
+  // Safe filter with null check
+  const highAlert = cities && cities.length > 0 ? cities.filter((c) => c.risk === "HIGH").map((c) => c.name) : [];
 
   const getRiskColor = (level) => {
     return level === "HIGH" ? "#dc2626" : level === "MEDIUM" ? "#f59e0b" : "#22c55e";
   };
+
+  // Guard: don't render map if no cities data
+  if (!cities || cities.length === 0) return null;
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-[calc(100vh-64px)]">
@@ -89,11 +111,11 @@ export default function Heatmap() {
               <CircleMarker
                 key={city.name}
                 center={[city.lat, city.lng]}
-                radius={Math.max(8, Math.min(30, city.scam_count / 15))}
+                radius={Math.max(8, Math.min(30, city.scams / 15))}
                 pathOptions={{
-                  fillColor: RISK_COLORS[city.risk_level],
+                  fillColor: RISK_COLORS[city.risk],
                   fillOpacity: 0.7,
-                  color: RISK_COLORS[city.risk_level],
+                  color: RISK_COLORS[city.risk],
                   weight: 2,
                   opacity: 0.9,
                 }}
@@ -129,22 +151,22 @@ export default function Heatmap() {
                       color: "#d1d5db",
                       marginBottom: "4px"
                     }}>
-                      🚨 <strong>Scam Reports:</strong> {city.scam_count}
+                      🚨 <strong>Scam Reports:</strong> {city.scams}
                     </div>
                     <div style={{
                       fontSize: "13px",
                       color: "#d1d5db",
                       marginBottom: "4px"
                     }}>
-                      📈 <strong>Trending:</strong> ↑{city.trending_pct}% this week
+                      📈 <strong>Trending:</strong> ↑{city.trending}% this week
                     </div>
                     <div style={{
                       fontSize: "13px",
-                      color: getRiskColor(city.risk_level),
+                      color: getRiskColor(city.risk),
                       marginBottom: "12px",
                       fontWeight: "600"
                     }}>
-                      ⚠️ <strong>Risk Level:</strong> {city.risk_level}
+                      ⚠️ <strong>Risk Level:</strong> {city.risk}
                     </div>
 
                     {/* Divider */}
@@ -167,28 +189,21 @@ export default function Heatmap() {
 
                     {/* Scam List */}
                     <div>
-                      {city.top_scams.map((scam, idx) => (
-                        <div key={scam.type} style={{
+                      {city.topScams && city.topScams.length > 0 ? city.topScams.map((scam, idx) => (
+                        <div key={idx} style={{
                           fontSize: "12px",
                           color: "#e5e7eb",
                           display: "flex",
                           justifyContent: "space-between",
                           paddingBottom: "6px",
                           marginBottom: "4px",
-                          borderBottom: idx < city.top_scams.length - 1 ? "1px solid #333333" : "none"
+                          borderBottom: idx < city.topScams.length - 1 ? "1px solid #333333" : "none"
                         }}>
                           <span style={{ fontWeight: "500" }}>
-                            {idx + 1}. {scam.type}
-                          </span>
-                          <span style={{
-                            color: getRiskColor(city.risk_level),
-                            fontWeight: "600",
-                            marginLeft: "8px"
-                          }}>
-                            {scam.count}
+                            {idx + 1}. {scam}
                           </span>
                         </div>
-                      ))}
+                      )) : <div style={{ color: "#999", fontSize: "12px" }}>No scam data</div>}
                     </div>
                   </div>
                 </Popup>
