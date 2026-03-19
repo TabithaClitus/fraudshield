@@ -1,9 +1,18 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { MapContainer, TileLayer, CircleMarker, Popup } from "react-leaflet";
+import L from "leaflet";
 import axios from "axios";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
+
+// Fix Leaflet's default icon images for deployed version
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+});
 
 const RISK_COLORS = { HIGH: "#EF4444", MEDIUM: "#F59E0B", LOW: "#10B981" };
 
@@ -40,6 +49,13 @@ export default function Heatmap() {
     }
   }, []);
 
+  // Force map re-render on component mount for proper Leaflet rendering
+  useEffect(() => {
+    setTimeout(() => {
+      window.dispatchEvent(new Event('resize'));
+    }, 100);
+  }, []);
+
   const highAlert = cities.filter((c) => c.risk_level === "HIGH").map((c) => c.name);
 
   const getRiskColor = (level) => {
@@ -58,7 +74,7 @@ export default function Heatmap() {
       )}
 
       {/* Map */}
-      <div className="flex-1 relative" style={{ height: isMobile ? "400px" : "auto" }}>
+      <div className="flex-1 relative" style={{ height: isMobile ? "400px" : "600px", width: '100%' }}>
         {loading ? (
           <div className="absolute inset-0 flex items-center justify-center">
             <p className="text-gray-400 animate-pulse">Loading map data...</p>
