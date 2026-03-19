@@ -30,6 +30,27 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // Static chart data - hardcoded for deployment stability
+  const staticScamData = [
+    { name: 'OTP Fraud', count: 1342 },
+    { name: 'Fake KYC', count: 987 },
+    { name: 'UPI Phishing', count: 756 },
+    { name: 'Fake IRCTC', count: 698 },
+    { name: 'Investment Fraud', count: 534 },
+    { name: 'Job Offer Fraud', count: 445 },
+    { name: 'Loan App Scam', count: 378 },
+    { name: 'Electricity Bill', count: 289 },
+    { name: 'Fake Courier', count: 198 },
+    { name: 'Matrimonial Scam', count: 134 },
+  ];
+
+  const staticTrendData = [
+    { day: 'Day 1', frauds: 45 }, { day: 'Day 5', frauds: 78 },
+    { day: 'Day 10', frauds: 123 }, { day: 'Day 15', frauds: 98 },
+    { day: 'Day 20', frauds: 167 }, { day: 'Day 25', frauds: 145 },
+    { day: 'Day 30', frauds: 189 },
+  ];
+
   useEffect(() => {
     axios.get("/api/stats").then((r) => { setStats(r.data); setLoading(false); }).catch(() => setLoading(false));
   }, []);
@@ -47,8 +68,9 @@ export default function Dashboard() {
     { icon: "🔍", label: "Active Patterns", value: stats?.active_patterns || 127, color: "text-pink-400", bg: "from-pink-500/10 to-red-500/5", border: "border-pink-500/20" },
   ];
 
-  const scamData = stats?.scam_types_weekly || [];
-  const trendData = stats?.fraud_trend_30d || [];
+  // Use static data for charts instead of API
+  const scamData = staticScamData;
+  const trendData = staticTrendData;
 
   const safeToday = stats?.safe_today || 1847;
   const cautionToday = stats?.caution_today || 634;
@@ -104,16 +126,18 @@ export default function Dashboard() {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: "24px", marginBottom: "24px" }}>
         <div className="rounded-2xl p-5" style={{ backgroundColor: colors.chartBg, borderColor: colors.borderColor, border: `1px solid ${colors.borderColor}` }}>
           <h2 className="text-lg font-bold mb-4" style={{ color: colors.textPrimary }}>Top Scam Types This Week</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={scamData} margin={{ top: 0, right: 0, bottom: 40, left: 0 }}>
-              <XAxis dataKey="type" tick={{ fill: colors.textSecondary, fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
-              <YAxis tick={{ fill: colors.textSecondary, fontSize: 11 }} />
-              <Tooltip contentStyle={{ background: colors.bgSecondary, border: `1px solid ${colors.borderColor}`, borderRadius: 8, color: colors.textPrimary }} />
-              <Bar dataKey="count" radius={[6, 6, 0, 0]}>
-                {scamData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={scamData} margin={{ top: 0, right: 0, bottom: 40, left: 0 }}>
+                <XAxis dataKey="name" tick={{ fill: colors.textSecondary, fontSize: 10 }} angle={-35} textAnchor="end" interval={0} />
+                <YAxis tick={{ fill: colors.textSecondary, fontSize: 11 }} />
+                <Tooltip contentStyle={{ background: colors.bgSecondary, border: `1px solid ${colors.borderColor}`, borderRadius: 8, color: colors.textPrimary }} />
+                <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                  {scamData.map((_, index) => <Cell key={index} fill={COLORS[index % COLORS.length]} />)}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="rounded-2xl p-5" style={{ backgroundColor: colors.chartBg, borderColor: colors.borderColor, border: `1px solid ${colors.borderColor}` }}>
@@ -144,15 +168,17 @@ export default function Dashboard() {
       <div style={{ display: "grid", gridTemplateColumns: isMobile ? "1fr" : "3fr 2fr", gap: "24px", marginBottom: "24px" }}>
         <div className="rounded-2xl p-5" style={{ backgroundColor: colors.chartBg, borderColor: colors.borderColor, border: `1px solid ${colors.borderColor}` }}>
           <h2 className="text-lg font-bold mb-4" style={{ color: colors.textPrimary }}>Fraud Attempts — Last 30 Days</h2>
-          <ResponsiveContainer width="100%" height={200}>
-            <LineChart data={trendData}>
-              <XAxis dataKey="day" tick={{ fill: colors.textSecondary, fontSize: 10 }} />
-              <YAxis tick={{ fill: colors.textSecondary, fontSize: 10 }} />
-              <Tooltip contentStyle={{ background: colors.bgSecondary, border: `1px solid ${colors.borderColor}`, borderRadius: 8, color: colors.textPrimary }} />
-              <Line type="monotone" dataKey="attempts" stroke="#6366F1" strokeWidth={2} dot={false}
-                style={{ filter: "drop-shadow(0 0 4px #6366F1)" }} />
-            </LineChart>
-          </ResponsiveContainer>
+          <div style={{ width: '100%', height: 300 }}>
+            <ResponsiveContainer width="100%" height={300}>
+              <LineChart data={trendData}>
+                <XAxis dataKey="day" tick={{ fill: colors.textSecondary, fontSize: 10 }} />
+                <YAxis tick={{ fill: colors.textSecondary, fontSize: 10 }} />
+                <Tooltip contentStyle={{ background: colors.bgSecondary, border: `1px solid ${colors.borderColor}`, borderRadius: 8, color: colors.textPrimary }} />
+                <Line type="monotone" dataKey="frauds" stroke="#6366F1" strokeWidth={2} dot={false}
+                  style={{ filter: "drop-shadow(0 0 4px #6366F1)" }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         <div className="rounded-2xl p-5" style={{ backgroundColor: colors.chartBg, borderColor: colors.borderColor, border: `1px solid ${colors.borderColor}` }}>
