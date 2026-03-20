@@ -28,14 +28,14 @@ export default function Heatmap() {
     // Only initialize map once
     if (mapInstanceRef.current) return;
 
-    // Wait for Leaflet to be loaded from CDN
-    const L = window.L;
-    if (!L) {
-      console.error('Leaflet library not loaded');
-      return;
-    }
-
     try {
+      // Wait for Leaflet to be loaded from CDN
+      const L = window.L;
+      if (!L) {
+        console.error('Leaflet library not loaded');
+        return;
+      }
+
       // Create map
       const map = L.map(mapRef.current, { 
         attributionControl: true,
@@ -151,6 +151,7 @@ export default function Heatmap() {
           maxWidth: 300,
           className: 'leaflet-popup-dark'
         });
+      });
 
       // Force resize
       setTimeout(() => {
