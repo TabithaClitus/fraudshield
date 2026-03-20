@@ -18,9 +18,16 @@ function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
+    // Wake up backend immediately on app load
+    fetch('https://fraudshield-xgpy.onrender.com/')
+      .catch(() => {}); // Fail silently
+    
+    // Keep alive every 14 minutes
     const keepAliveInterval = setInterval(() => {
-      keepAlive();
+      fetch('https://fraudshield-xgpy.onrender.com/')
+        .catch(() => {});
     }, 14 * 60 * 1000);
+    
     return () => clearInterval(keepAliveInterval);
   }, []);
 
