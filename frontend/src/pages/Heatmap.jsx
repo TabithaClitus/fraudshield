@@ -114,15 +114,6 @@ export default function Heatmap() {
 
         const radius = Math.min(city.scams / 5, 40);
 
-        // Outer glow circle
-        const glowCircle = L.circle([city.lat, city.lng], {
-          color: colorConfig.glow,
-          fillColor: colorConfig.glow,
-          fillOpacity: 0.2,
-          weight: 0,
-          radius: radius * (colorConfig.radiusMultiplier + 400)
-        }).addTo(map);
-
         // Inner solid circle - vibrant with new colors and opacity/weight
         const circleColors = city.risk === 'HIGH'
           ? { fill: '#ff0000', stroke: '#cc0000', fillOpacity: 0.5, weight: 2 }
@@ -138,44 +129,7 @@ export default function Heatmap() {
           radius: radius * colorConfig.radiusMultiplier
         }).addTo(map);
 
-        // Animated pulse circle for HIGH risk cities
-        if (city.risk === 'HIGH') {
-          const pulseCircle = L.circle([city.lat, city.lng], {
-            color: '#ff6b6b',
-            fillColor: '#ff0000',
-            fillOpacity: 0.15,
-            weight: 1,
-            radius: radius * (colorConfig.radiusMultiplier + 600),
-            className: 'pulse-circle'
-          }).addTo(map);
-        }
-
-        // Build popup content
-        const popupContent = `
-          <div style="min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
-            <h3 style="color: #ffffff; font-size: 16px; font-weight: bold; margin: 0 0 8px 0;">🏙️ ${city.name}</h3>
-            <div style="border-bottom: 2px solid #444444; margin-bottom: 8px;"></div>
-            <div style="color: #d1d5db; margin-bottom: 4px;">🚨 <strong>Scam Reports:</strong> ${city.scams}</div>
-            <div style="color: #d1d5db; margin-bottom: 4px;">📈 <strong>Trending:</strong> ↑${city.trending}% this week</div>
-            <div style="color: ${colorConfig.main}; margin-bottom: 12px; font-weight: 600;">⚠️ <strong>Risk Level:</strong> ${city.risk}</div>
-            <div style="border-bottom: 1px solid #444444; margin-bottom: 8px;"></div>
-            <div style="color: #fbbf24; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Top Scams This Week:</div>
-            <div>
-              ${city.topScams.map((scam, idx) => `
-                <div style="color: #e5e7eb; font-size: 12px; padding-bottom: 4px; margin-bottom: 4px; border-bottom: ${idx < city.topScams.length - 1 ? '1px solid #333333' : 'none'};">
-                  <strong>${idx + 1}. ${scam}</strong>
-                </div>
-              `).join('')}
-            </div>
-          </div>
-        `;
-
         innerCircle.bindPopup(popupContent, {
-          maxWidth: 300,
-          className: 'leaflet-popup-dark'
-        });
-
-        glowCircle.bindPopup(popupContent, {
           maxWidth: 300,
           className: 'leaflet-popup-dark'
         });
@@ -211,37 +165,6 @@ export default function Heatmap() {
       exit={{ opacity: 0 }} 
       className="flex flex-col h-[calc(100vh-64px)]"
     >
-      {/* Alert Banner - Upgraded */}
-      {highAlert.length > 0 && (
-        <div style={{
-          backgroundColor: '#cc0000',
-          background: 'linear-gradient(135deg, #cc0000 0%, #990000 100%)',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          overflow: 'hidden',
-          boxShadow: '0 4px 12px rgba(204, 0, 0, 0.3)'
-        }}>
-          <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 }}>
-            🚨 HIGH ALERT:
-          </span>
-          <div style={{ flex: 1, overflow: 'hidden' }}>
-            <div style={{ 
-              fontSize: '13px', 
-              color: '#ffffff',
-              fontWeight: '500',
-              animation: 'smooth-scroll 25s linear infinite',
-              whiteSpace: 'nowrap',
-              display: 'flex',
-              gap: '32px'
-            }}>
-              {highAlert.map(c => c.name).join(' • ')} &nbsp;&nbsp;&nbsp;&nbsp; {highAlert.map(c => c.name).join(' • ')}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Map Container */}
       <div style={{
         flex: 1,
