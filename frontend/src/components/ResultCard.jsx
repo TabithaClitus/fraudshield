@@ -129,10 +129,11 @@ export default function ResultCard({ result, onReset, onBlock }) {
         </div>
 
         {/* Source Badge */}
-        {source && (
+        {/* Show fraud database badge only for HIGH/MEDIUM risks */}
+        {source === "fraud_database" && risk_level !== "LOW" && (
           <div style={{
-            backgroundColor: source === "fraud_database" ? (colors.isDark ? 'rgba(255,68,68,0.15)' : 'rgba(180,0,0,0.08)') : (colors.isDark ? 'rgba(0,255,136,0.15)' : 'rgba(0,180,80,0.12)'),
-            border: `1px solid ${source === "fraud_database" ? (colors.isDark ? '#ff4444' : '#cc0000') : (colors.isDark ? '#00ff88' : '#00a050')}`,
+            backgroundColor: colors.isDark ? 'rgba(255,68,68,0.15)' : 'rgba(180,0,0,0.08)',
+            border: `1px solid ${colors.isDark ? '#ff4444' : '#cc0000'}`,
             borderRadius: "8px",
             padding: "10px 12px",
             textAlign: "center"
@@ -140,12 +141,30 @@ export default function ResultCard({ result, onReset, onBlock }) {
             <p style={{
               fontSize: "13px",
               fontWeight: "500",
-              color: source === "fraud_database" ? (colors.isDark ? '#ff6666' : '#990000') : (colors.isDark ? '#00ff88' : '#006830'),
+              color: colors.isDark ? '#ff6666' : '#990000',
               margin: "0"
             }}>
-              {source === "fraud_database" 
-                ? "⚠️ Found in fraud database" 
-                : "✅ No reports found — transaction analyzed"}
+              ⚠️ Found in fraud database
+            </p>
+          </div>
+        )}
+
+        {/* Show "No reports found" for LOW risk or transaction_analysis source */}
+        {(source === "transaction_analysis" || risk_level === "LOW") && (
+          <div style={{
+            backgroundColor: colors.isDark ? 'rgba(0,255,136,0.15)' : 'rgba(0,180,80,0.12)',
+            border: `1px solid ${colors.isDark ? '#00ff88' : '#00a050'}`,
+            borderRadius: "8px",
+            padding: "10px 12px",
+            textAlign: "center"
+          }}>
+            <p style={{
+              fontSize: "13px",
+              fontWeight: "500",
+              color: colors.isDark ? '#00ff88' : '#006830',
+              margin: "0"
+            }}>
+              ✅ No reports found — Transaction analyzed
             </p>
           </div>
         )}
