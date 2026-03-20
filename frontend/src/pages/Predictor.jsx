@@ -53,10 +53,15 @@ export default function Predictor() {
   }, [setRetrying]);
 
   useEffect(() => {
-    fetchPredictions();
-    const interval = setInterval(fetchPredictions, 60000);
-    return () => clearInterval(interval);
-  }, [fetchPredictions]);
+    // REMOVED: No automatic backend health check on mount
+    // Predictor loads with FALLBACK data immediately
+    // User must click "Refresh" button to fetch live predictions from API
+    // Set initial predictions to FALLBACK
+    setPredictions(FALLBACK);
+    setUpdatedAt(new Date().toISOString());
+    setLoading(false);
+    setLastFetch(Date.now());
+  }, []);
 
   const timeSince = lastFetch ? Math.round((Date.now() - lastFetch) / 1000) : 0;
 

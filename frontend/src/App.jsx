@@ -17,23 +17,15 @@ function AppContent() {
   const location = useLocation();
 
   // Keep-alive ping: Send a ping every 14 minutes to prevent Render backend from sleeping
+  // This is triggered ONLY when user performs an action, not on app startup
+  // Set up recurring ping every 14 minutes (if user has interacted with the app)
   useEffect(() => {
-    // Fire initial ping after a short delay to avoid startup contention
-    // This ensures the home page and navbar load first
-    const initialPingTimeout = setTimeout(() => {
-      keepAlive();
-    }, 500);
-
-    // Set up recurring ping every 14 minutes
     const keepAliveInterval = setInterval(() => {
       keepAlive();
     }, 14 * 60 * 1000); // 840000 ms = 14 minutes
 
     // Cleanup
-    return () => {
-      clearTimeout(initialPingTimeout);
-      clearInterval(keepAliveInterval);
-    };
+    return () => clearInterval(keepAliveInterval);
   }, []);
   
   return (

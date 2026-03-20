@@ -54,6 +54,11 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
+    // REMOVED: No automatic backend health check on mount
+    // Dashboard loads with static data immediately
+    // Uncomment below only if you want to fetch live data when user needs it
+    
+    /*
     get("/api/stats", {}, (retryInfo) => {
       setRetrying(true, retryInfo);
     })
@@ -66,7 +71,11 @@ export default function Dashboard() {
         setLoading(false);
         setRetrying(false);
       });
-  }, [setRetrying]);
+    */
+    
+    // Use static data immediately on load
+    setLoading(false);
+  }, []);
 
   if (loading) return (
     <div className="flex items-center justify-center h-96">
