@@ -105,9 +105,9 @@ export default function Heatmap() {
 
       // Add cities to map with enhanced visuals
       const getRadius = (scams, risk) => {
-        if (risk === 'HIGH') return scams * 400;
-        if (risk === 'MEDIUM') return scams * 300;
-        return scams * 200;
+        if (risk === 'HIGH') return scams * 250;
+        if (risk === 'MEDIUM') return scams * 180;
+        return scams * 120;
       };
 
       CITIES.forEach(city => {
