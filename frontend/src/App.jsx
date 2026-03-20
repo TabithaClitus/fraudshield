@@ -1,4 +1,5 @@
-import { Routes, Route, useLocation, useEffect } from "react-router-dom";
+import { Routes, Route, useLocation } from "react-router-dom";
+import { useEffect } from "react";
 import { AnimatePresence } from "framer-motion";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext.jsx";
 import { RetryProvider, useRetry } from "./contexts/RetryContext.jsx";
@@ -16,18 +17,13 @@ function AppContent() {
   const { retryState } = useRetry();
   const location = useLocation();
 
-  // Keep-alive ping: Send a ping every 14 minutes to prevent Render backend from sleeping
-  // This is triggered ONLY when user performs an action, not on app startup
-  // Set up recurring ping every 14 minutes (if user has interacted with the app)
   useEffect(() => {
     const keepAliveInterval = setInterval(() => {
       keepAlive();
-    }, 14 * 60 * 1000); // 840000 ms = 14 minutes
-
-    // Cleanup
+    }, 14 * 60 * 1000);
     return () => clearInterval(keepAliveInterval);
   }, []);
-  
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: colors.bgPrimary }}>
       <RetryLoader isRetrying={retryState.isRetrying} retryInfo={retryState.retryInfo} />
