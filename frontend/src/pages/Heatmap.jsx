@@ -44,16 +44,16 @@ export default function Heatmap() {
       
       mapInstanceRef.current = map;
 
-      // Add tile layer
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
+      // Add dark CartoDB tile layer
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '©OpenStreetMap ©CartoDB',
         maxZoom: 18,
       }).addTo(map);
 
-      // Add dark theme CSS for popups
-      if (!document.getElementById("leaflet-popup-dark-theme")) {
+      // Add advanced CSS for popups and city labels
+      if (!document.getElementById("heatmap-advanced-theme")) {
         const styleSheet = document.createElement("style");
-        styleSheet.id = "leaflet-popup-dark-theme";
+        styleSheet.id = "heatmap-advanced-theme";
         styleSheet.textContent = `
           .leaflet-popup-content-wrapper {
             background: #1a1a2e !important;
@@ -75,22 +75,81 @@ export default function Heatmap() {
             font-size: 13px !important;
             line-height: 1.5 !important;
           }
+          .city-label {
+            background: rgba(0, 0, 0, 0.7);
+            color: #ffffff;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            white-space: nowrap;
+            pointer-events: none;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+          }
+          @keyframes pulse-glow {
+            0%, 100% {
+              opacity: 0.3;
+              transform: scale(1);
+            }
+            50% {
+              opacity: 0.6;
+              transform: scale(1.1);
+            }
+          }
+          .pulse-circle {
+            animation: pulse-glow 2s ease-in-out infinite !important;
+          }
         `;
         document.head.appendChild(styleSheet);
       }
 
-      // Add cities to map
+      // Add cities to map with enhanced visuals
       CITIES.forEach(city => {
         const color = city.risk === 'HIGH' ? '#EF4444' : city.risk === 'MEDIUM' ? '#F59E0B' : '#10B981';
         const radius = Math.min(city.scams / 5, 40);
 
-        // Create circle marker
-        const circle = L.circle([city.lat, city.lng], {
+        // Outer glow circle
+        const glowCircle = L.circle([city.lat, city.lng], {
+          color: color,
+          fillColor: color,
+          fillOpacity: 0.15,
+          weight: 0,
+          radius: radius * 1200
+        }).addTo(map);
+
+        // Inner solid circle
+        const innerCircle = L.circle([city.lat, city.lng], {
           color: color,
           fillColor: color,
           fillOpacity: 0.6,
           weight: 2,
           radius: radius * 1000
+        }).addTo(map);
+
+        // Animated pulse circle for HIGH risk cities
+        if (city.risk === 'HIGH') {
+          const pulseCircle = L.circle([city.lat, city.lng], {
+            color: '#ff4444',
+            fillColor: '#ff4444',
+            fillOpacity: 0.1,
+            weight: 1,
+            radius: radius * 1800,
+            className: 'pulse-circle'
+          }).addTo(map);
+        }
+
+        // Create city label using HTML marker
+        const labelHtml = `<div class="city-label">${city.name}</div>`;
+        const labelIcon = L.divIcon({
+          html: labelHtml,
+          iconSize: [100, 20],
+          iconAnchor: [50, 10],
+          className: 'city-label-icon'
+        });
+        
+        L.marker([city.lat, city.lng], {
+          icon: labelIcon,
+          interactive: false
         }).addTo(map);
 
         // Build popup content
@@ -113,7 +172,12 @@ export default function Heatmap() {
           </div>
         `;
 
-        circle.bindPopup(popupContent, {
+        innerCircle.bindPopup(popupContent, {
+          maxWidth: 300,
+          className: 'leaflet-popup-dark'
+        });
+
+        glowCircle.bindPopup(popupContent, {
           maxWidth: 300,
           className: 'leaflet-popup-dark'
         });
@@ -136,8 +200,11 @@ export default function Heatmap() {
     }
   }, []);
 
-  // Get high alert cities
-  const highAlert = CITIES.filter(c => c.risk === 'HIGH').map(c => c.name);
+  // Get high alert cities and calculate stats
+  const highAlert = CITIES.filter(c => c.risk === 'HIGH');
+  const mediumAlert = CITIES.filter(c => c.risk === 'MEDIUM');
+  const lowAlert = CITIES.filter(c => c.risk === 'LOW');
+  const totalScams = CITIES.reduce((sum, c) => sum + c.scams, 0);
 
   return (
     <motion.div 
@@ -146,23 +213,35 @@ export default function Heatmap() {
       exit={{ opacity: 0 }} 
       className="flex flex-col h-[calc(100vh-64px)]"
     >
-      {/* Alert Banner */}
+      {/* Alert Banner - Upgraded */}
       {highAlert.length > 0 && (
         <div style={{
-          backgroundColor: colors.isDark ? 'rgba(220, 38, 38, 0.1)' : 'rgba(255, 220, 220, 0.3)',
-          borderBottom: `1px solid ${colors.isDark ? 'rgba(220, 38, 38, 0.3)' : 'rgba(255, 100, 100, 0.3)'}`,
-          padding: '12px 16px',
+          backgroundColor: '#dc2626',
+          background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+          padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
-          gap: '12px'
+          gap: '12px',
+          overflow: 'hidden',
+          boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
         }}>
-          <span style={{ color: colors.isDark ? '#ff6666' : '#cc0000', fontWeight: 'bold', fontSize: '14px' }}>
-            🔴 HIGH ALERT:
+          <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 }}>
+            🚨 HIGH ALERT:
           </span>
-          <span style={{ color: colors.isDark ? '#ff8888' : '#dd0000', fontSize: '14px' }}>
-            {highAlert.join(", ")}
-          </span>
-          <span style={{ marginLeft: 'auto', color: colors.isDark ? '#ff6666' : '#cc0000', fontSize: '12px', fontWeight: 'bold' }}>
+          <div style={{ flex: 1, overflow: 'hidden' }}>
+            <div style={{ 
+              fontSize: '13px', 
+              color: '#ffffff',
+              fontWeight: '500',
+              animation: 'smooth-scroll 25s linear infinite',
+              whiteSpace: 'nowrap',
+              display: 'flex',
+              gap: '32px'
+            }}>
+              {highAlert.map(c => `🚨 ${c.name}`).join(' • ')} &nbsp;&nbsp;&nbsp;&nbsp; {highAlert.map(c => `🚨 ${c.name}`).join(' • ')}
+            </div>
+          </div>
+          <span style={{ marginLeft: 'auto', color: '#ffffff', fontSize: '11px', fontWeight: 'bold', flexShrink: 0, animation: 'blink 1s infinite' }}>
             Active now
           </span>
         </div>
@@ -174,7 +253,7 @@ export default function Heatmap() {
         position: 'relative',
         height: isMobile ? '400px' : '600px',
         width: '100%',
-        backgroundColor: colors.isDark ? '#1a1a2e' : '#f5f5f5'
+        backgroundColor: '#1a1a2e'
       }}>
         <div 
           ref={mapRef} 
@@ -184,50 +263,127 @@ export default function Heatmap() {
             borderRadius: '0'
           }}
         />
+
+        {/* Stats Overlay - Top Right */}
+        <div style={{
+          position: 'absolute',
+          top: '16px',
+          right: '16px',
+          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          backdropFilter: 'blur(8px)',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '12px',
+          padding: '16px',
+          zIndex: 1000,
+          minWidth: '220px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+        }}>
+          <p style={{
+            fontSize: '11px',
+            fontWeight: '700',
+            textTransform: 'uppercase',
+            letterSpacing: '0.05em',
+            color: '#888888',
+            margin: '0 0 12px 0'
+          }}>
+            Risk Statistics
+          </p>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#EF4444', boxShadow: '0 0 8px #EF4444' }} />
+              <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: '600' }}>
+                HIGH: <span style={{ color: '#EF4444', fontWeight: '700' }}>{highAlert.length}</span>
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#F59E0B', boxShadow: '0 0 8px #F59E0B' }} />
+              <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: '600' }}>
+                MEDIUM: <span style={{ color: '#F59E0B', fontWeight: '700' }}>{mediumAlert.length}</span>
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981', boxShadow: '0 0 8px #10B981' }} />
+              <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: '600' }}>
+                LOW: <span style={{ color: '#10B981', fontWeight: '700' }}>{lowAlert.length}</span>
+              </span>
+            </div>
+            <div style={{
+              marginTop: '12px',
+              paddingTop: '12px',
+              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+              color: '#fbbf24',
+              fontSize: '12px',
+              fontWeight: '600'
+            }}>
+              🇮🇳 {totalScams.toLocaleString()} active scams
+            </div>
+          </div>
+        </div>
       </div>
 
-      {/* Legend */}
+      {/* Legend - Upgraded */}
       <div style={{
-        backgroundColor: colors.bgSecondary,
-        borderTop: `1px solid ${colors.borderColor}`,
-        padding: '12px 16px',
+        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backdropFilter: 'blur(8px)',
+        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+        padding: '16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: isMobile ? 'wrap' : 'nowrap',
-        gap: '12px'
+        gap: '24px',
+        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', flex: 1 }}>
           {[
             { level: 'HIGH', color: '#EF4444' },
             { level: 'MEDIUM', color: '#F59E0B' },
             { level: 'LOW', color: '#10B981' }
           ].map(({ level, color }) => (
-            <div key={level} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-              <div style={{ width: '12px', height: '12px', borderRadius: '50%', backgroundColor: color }} />
-              <span style={{ fontSize: '12px', color: colors.textSecondary }}>{level}</span>
+            <div key={level} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{
+                width: '12px',
+                height: '12px',
+                borderRadius: '50%',
+                backgroundColor: color,
+                boxShadow: `0 0 12px ${color}`,
+                border: '2px solid rgba(255, 255, 255, 0.3)'
+              }} />
+              <span style={{ fontSize: '13px', color: '#ffffff', fontWeight: '500' }}>{level}</span>
             </div>
           ))}
-          <span style={{ fontSize: '12px', color: colors.textSecondary }}>• Circle size = scam volume</span>
+          <span style={{ fontSize: '12px', color: '#888888' }}>• Circle size = scam volume</span>
         </div>
 
         {/* Ticker */}
-        <div style={{ display: isMobile ? 'none' : 'block', overflow: 'hidden', width: '256px' }}>
-          <div style={{ 
-            fontSize: '12px', 
+        <div style={{ display: isMobile ? 'none' : 'block', overflow: 'hidden', flex: 0.4, minWidth: '200px' }}>
+          <div style={{
+            fontSize: '12px',
             color: '#fbbf24',
-            animation: 'scroll 20s linear infinite',
-            whiteSpace: 'nowrap'
+            fontWeight: '500',
+            animation: 'smooth-scroll 28s linear infinite',
+            whiteSpace: 'nowrap',
+            display: 'inline-flex',
+            gap: '48px'
           }}>
-            🚨 OTP Fraud rising in Delhi +47% &nbsp;&nbsp; 🚨 Fake IRCTC scam spreading in Mumbai &nbsp;&nbsp; 🚨 Job fraud alert in Bangalore &nbsp;&nbsp;
+            📊 Real-time monitoring 🚨 &nbsp; 📊 Real-time monitoring 🚨
           </div>
         </div>
       </div>
 
       <style>{`
-        @keyframes scroll {
-          0% { transform: translateX(100%); }
-          100% { transform: translateX(-100%); }
+        @keyframes smooth-scroll {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        @keyframes blink {
+          0%, 49%, 100% { opacity: 1; }
+          50% { opacity: 0.5; }
+        }
+        .city-label-icon {
+          background: none !important;
+          border: none !important;
         }
       `}</style>
     </motion.div>
