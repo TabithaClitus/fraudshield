@@ -104,36 +104,53 @@ export default function Heatmap() {
       }
 
       // Add cities to map with enhanced visuals
+      const getRadius = (scams, risk) => {
+        if (risk === 'HIGH') return scams * 2000;
+        if (risk === 'MEDIUM') return scams * 1500;
+        return scams * 1000;
+      };
+
       CITIES.forEach(city => {
-        // Vibrant colors for each risk level
-        const colorConfig = city.risk === 'HIGH' 
-          ? { main: '#ff0000', glow: '#ff6b6b', radiusMultiplier: 1200 }
-          : city.risk === 'MEDIUM'
-          ? { main: '#ff8c00', glow: '#ffd700', radiusMultiplier: 900 }
-          : { main: '#00cc44', glow: '#90ee90', radiusMultiplier: 700 };
-
-        const radius = Math.min(city.scams / 5, 40);
-
-        // Inner solid circle - vibrant with new colors and opacity/weight
+        // Circle colors based on risk level
         const circleColors = city.risk === 'HIGH'
-          ? { fill: '#ff0000', stroke: '#cc0000', fillOpacity: 0.5, weight: 2 }
+          ? { fill: '#ff2222', stroke: '#cc0000', fillOpacity: 0.55, weight: 2 }
           : city.risk === 'MEDIUM'
-          ? { fill: '#ff8800', stroke: '#cc6600', fillOpacity: 0.5, weight: 2 }
-          : { fill: '#00cc44', stroke: '#009933', fillOpacity: 0.5, weight: 2 };
-        
-        const innerCircle = L.circle([city.lat, city.lng], {
+          ? { fill: '#ff8800', stroke: '#cc6600', fillOpacity: 0.55, weight: 2 }
+          : { fill: '#00cc44', stroke: '#009933', fillOpacity: 0.55, weight: 2 };
+
+        // Create solid circle with new radius calculation
+        const circle = L.circle([city.lat, city.lng], {
           color: circleColors.stroke,
           fillColor: circleColors.fill,
           fillOpacity: circleColors.fillOpacity,
           weight: circleColors.weight,
-          radius: radius * colorConfig.radiusMultiplier
+          radius: getRadius(city.scams, city.risk)
         }).addTo(map);
 
-        innerCircle.bindPopup(popupContent, {
+        // Build popup content
+        const popupContent = `
+          <div style="min-width: 240px; font-family: system-ui, -apple-system, sans-serif;">
+            <h3 style="color: #ffffff; font-size: 16px; font-weight: bold; margin: 0 0 8px 0;">🏙️ ${city.name}</h3>
+            <div style="border-bottom: 2px solid #444444; margin-bottom: 8px;"></div>
+            <div style="color: #d1d5db; margin-bottom: 4px;">🚨 <strong>Scam Reports:</strong> ${city.scams}</div>
+            <div style="color: #d1d5db; margin-bottom: 4px;">📈 <strong>Trending:</strong> ↑${city.trending}% this week</div>
+            <div style="color: ${circleColors.fill}; margin-bottom: 12px; font-weight: 600;">⚠️ <strong>Risk Level:</strong> ${city.risk}</div>
+            <div style="border-bottom: 1px solid #444444; margin-bottom: 8px;"></div>
+            <div style="color: #fbbf24; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Top Scams This Week:</div>
+            <div>
+              ${city.topScams.map((scam, idx) => `
+                <div style="color: #e5e7eb; font-size: 12px; padding-bottom: 4px; margin-bottom: 4px; border-bottom: ${idx < city.topScams.length - 1 ? '1px solid #333333' : 'none'};">
+                  <strong>${idx + 1}. ${scam}</strong>
+                </div>
+              `).join('')}
+            </div>
+          </div>
+        `;
+
+        circle.bindPopup(popupContent, {
           maxWidth: 300,
           className: 'leaflet-popup-dark'
         });
-      });
 
       // Force resize
       setTimeout(() => {
