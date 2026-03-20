@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
+import { post } from "../utils/apiClient.js";
+import { useRetry } from "../contexts/RetryContext.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 import ScanAnimation from "../components/ScanAnimation.jsx";
@@ -18,6 +19,7 @@ const SCENARIOS = [
 export default function Home() {
   const { colors } = useTheme();
   const isMobile = useIsMobile();
+  const { setRetrying } = useRetry();
   const [form, setForm] = useState({ mobile: "", amount: "", note: "" });
   const [state, setState] = useState("idle"); // idle | scanning | result | error
   const [result, setResult] = useState(null);
@@ -32,11 +34,19 @@ export default function Home() {
 
     // Simulate minimum 2.5s scan for drama
     const [res] = await Promise.all([
-      axios.post("/api/check-number", {
+      post("/api/check-number", {
         mobile: data.mobile.replace(/\D/g, "").slice(-10),
         amount: parseFloat(data.amount),
         note: data.note,
-      }).catch((e) => ({ data: null, error: e })),
+      }, {}, (retryInfo) => {
+        setRetrying(true, retryInfo);
+      }).then(response => {
+        setRetrying(false);
+        return { data: response.data, error: null };
+      }).catch((e) => { 
+        setRetrying(false);
+        return { data: null, error: e };
+      }),
       new Promise((r) => setTimeout(r, 2500)),
     ]);
 
@@ -65,9 +75,13 @@ export default function Home() {
 
   const handleBlock = async () => {
     try {
-      await axios.post("/api/report", { mobile: result.mobile, reason: result.scam_type || "Fraud" });
+      await post("/api/report", { mobile: result.mobile, reason: result.scam_type || "Fraud" }, {}, (retryInfo) => {
+        setRetrying(true, retryInfo);
+      });
+      setRetrying(false);
       alert("✅ Number reported to FraudShield database. Our team will review within 24 hours.");
     } catch {
+      setRetrying(false);
       alert("Report submitted locally. Backend may not be running.");
     }
   };

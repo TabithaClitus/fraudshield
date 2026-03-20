@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, PieChart, Pie, Cell, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
-import axios from "axios";
+import { get } from "../utils/apiClient.js";
+import { useRetry } from "../contexts/RetryContext.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 
@@ -27,6 +28,7 @@ const formatNum = (n) => n >= 1000000 ? (n / 1000000).toFixed(1) + 'M' : n.toLoc
 export default function Dashboard() {
   const { colors } = useTheme();
   const isMobile = useIsMobile();
+  const { setRetrying } = useRetry();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -52,8 +54,19 @@ export default function Dashboard() {
   ];
 
   useEffect(() => {
-    axios.get("/api/stats").then((r) => { setStats(r.data); setLoading(false); }).catch(() => setLoading(false));
-  }, []);
+    get("/api/stats", {}, (retryInfo) => {
+      setRetrying(true, retryInfo);
+    })
+      .then((r) => { 
+        setStats(r.data); 
+        setLoading(false);
+        setRetrying(false);
+      })
+      .catch(() => {
+        setLoading(false);
+        setRetrying(false);
+      });
+  }, [setRetrying]);
 
   if (loading) return (
     <div className="flex items-center justify-center h-96">

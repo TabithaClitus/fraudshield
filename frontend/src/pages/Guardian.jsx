@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
+import { post } from "../utils/apiClient.js";
+import { useRetry } from "../contexts/RetryContext.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 
@@ -43,6 +44,7 @@ const HISTORY = [
 export default function Guardian() {
   const { colors } = useTheme();
   const isMobile = useIsMobile();
+  const { setRetrying } = useRetry();
   const [members, setMembers] = useState(DEMO_MEMBERS);
   const [form, setForm] = useState({ name: "", mobile: "", relation: "Parent" });
   const [alert, setAlert] = useState(null);
@@ -88,15 +90,19 @@ export default function Guardian() {
   const simulateAlert = async (member) => {
     setAlert(member);
     try {
-      const res = await axios.post("/api/guardian/alert", {
+      const res = await post("/api/guardian/alert", {
         guardian_name: "You",
         member_name: member.name,
         mobile: member.mobile,
         amount: 50000
+      }, {}, (retryInfo) => {
+        setRetrying(true, retryInfo);
       });
       setNotifResult(res.data);
+      setRetrying(false);
     } catch {
       setNotifResult({ success: true, alert_sent: true });
+      setRetrying(false);
     }
   };
 

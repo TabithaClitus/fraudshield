@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import axios from "axios";
+import { get } from "../utils/apiClient.js";
+import { useRetry } from "../contexts/RetryContext.jsx";
 import { useTheme } from "../contexts/ThemeContext.jsx";
 import { useIsMobile } from "../hooks/useIsMobile.js";
 
@@ -27,6 +28,7 @@ const TREND_COLORS = { HIGH: "#EF4444", MEDIUM: "#F59E0B", LOW: "#10B981" };
 export default function Predictor() {
   const { colors } = useTheme();
   const isMobile = useIsMobile();
+  const { setRetrying } = useRetry();
   const [predictions, setPredictions] = useState([]);
   const [loading, setLoading] = useState(false);
   const [updatedAt, setUpdatedAt] = useState(null);
@@ -35,16 +37,20 @@ export default function Predictor() {
   const fetchPredictions = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await axios.get("/api/predictions");
+      const res = await get("/api/predictions", {}, (retryInfo) => {
+        setRetrying(true, retryInfo);
+      });
       setPredictions(res.data.predictions || FALLBACK);
       setUpdatedAt(res.data.updated_at);
+      setRetrying(false);
     } catch {
       setPredictions(FALLBACK);
       setUpdatedAt(new Date().toISOString());
+      setRetrying(false);
     }
     setLoading(false);
     setLastFetch(Date.now());
-  }, []);
+  }, [setRetrying]);
 
   useEffect(() => {
     fetchPredictions();
