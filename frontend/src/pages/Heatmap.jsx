@@ -44,9 +44,9 @@ export default function Heatmap() {
       
       mapInstanceRef.current = map;
 
-      // Add dark CartoDB tile layer
-      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '©OpenStreetMap ©CartoDB',
+      // Add colorful OpenStreetMap tile layer
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '©OpenStreetMap contributors',
         maxZoom: 18,
       }).addTo(map);
 
@@ -105,35 +105,41 @@ export default function Heatmap() {
 
       // Add cities to map with enhanced visuals
       CITIES.forEach(city => {
-        const color = city.risk === 'HIGH' ? '#EF4444' : city.risk === 'MEDIUM' ? '#F59E0B' : '#10B981';
+        // Vibrant colors for each risk level
+        const colorConfig = city.risk === 'HIGH' 
+          ? { main: '#ff0000', glow: '#ff6b6b', radiusMultiplier: 1200 }
+          : city.risk === 'MEDIUM'
+          ? { main: '#ff8c00', glow: '#ffd700', radiusMultiplier: 900 }
+          : { main: '#00cc44', glow: '#90ee90', radiusMultiplier: 700 };
+
         const radius = Math.min(city.scams / 5, 40);
 
         // Outer glow circle
         const glowCircle = L.circle([city.lat, city.lng], {
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.15,
+          color: colorConfig.glow,
+          fillColor: colorConfig.glow,
+          fillOpacity: 0.2,
           weight: 0,
-          radius: radius * 1200
+          radius: radius * (colorConfig.radiusMultiplier + 400)
         }).addTo(map);
 
         // Inner solid circle
         const innerCircle = L.circle([city.lat, city.lng], {
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.6,
-          weight: 2,
-          radius: radius * 1000
+          color: colorConfig.main,
+          fillColor: colorConfig.main,
+          fillOpacity: 0.7,
+          weight: 3,
+          radius: radius * colorConfig.radiusMultiplier
         }).addTo(map);
 
         // Animated pulse circle for HIGH risk cities
         if (city.risk === 'HIGH') {
           const pulseCircle = L.circle([city.lat, city.lng], {
-            color: '#ff4444',
-            fillColor: '#ff4444',
-            fillOpacity: 0.1,
+            color: '#ff6b6b',
+            fillColor: '#ff0000',
+            fillOpacity: 0.15,
             weight: 1,
-            radius: radius * 1800,
+            radius: radius * (colorConfig.radiusMultiplier + 600),
             className: 'pulse-circle'
           }).addTo(map);
         }
@@ -159,7 +165,7 @@ export default function Heatmap() {
             <div style="border-bottom: 2px solid #444444; margin-bottom: 8px;"></div>
             <div style="color: #d1d5db; margin-bottom: 4px;">🚨 <strong>Scam Reports:</strong> ${city.scams}</div>
             <div style="color: #d1d5db; margin-bottom: 4px;">📈 <strong>Trending:</strong> ↑${city.trending}% this week</div>
-            <div style="color: ${color}; margin-bottom: 12px; font-weight: 600;">⚠️ <strong>Risk Level:</strong> ${city.risk}</div>
+            <div style="color: ${colorConfig.main}; margin-bottom: 12px; font-weight: 600;">⚠️ <strong>Risk Level:</strong> ${city.risk}</div>
             <div style="border-bottom: 1px solid #444444; margin-bottom: 8px;"></div>
             <div style="color: #fbbf24; font-size: 12px; font-weight: 700; text-transform: uppercase; margin-bottom: 8px;">Top Scams This Week:</div>
             <div>
@@ -216,14 +222,14 @@ export default function Heatmap() {
       {/* Alert Banner - Upgraded */}
       {highAlert.length > 0 && (
         <div style={{
-          backgroundColor: '#dc2626',
-          background: 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+          backgroundColor: '#cc0000',
+          background: 'linear-gradient(135deg, #cc0000 0%, #990000 100%)',
           padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
           overflow: 'hidden',
-          boxShadow: '0 4px 12px rgba(220, 38, 38, 0.3)'
+          boxShadow: '0 4px 12px rgba(204, 0, 0, 0.3)'
         }}>
           <span style={{ color: '#ffffff', fontWeight: 'bold', fontSize: '14px', flexShrink: 0 }}>
             🚨 HIGH ALERT:
@@ -269,21 +275,21 @@ export default function Heatmap() {
           position: 'absolute',
           top: '16px',
           right: '16px',
-          backgroundColor: 'rgba(0, 0, 0, 0.7)',
+          backgroundColor: 'rgba(255, 255, 255, 0.95)',
           backdropFilter: 'blur(8px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
+          border: '2px solid #e0e0e0',
           borderRadius: '12px',
           padding: '16px',
           zIndex: 1000,
           minWidth: '220px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.5)'
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
         }}>
           <p style={{
             fontSize: '11px',
             fontWeight: '700',
             textTransform: 'uppercase',
             letterSpacing: '0.05em',
-            color: '#888888',
+            color: '#666666',
             margin: '0 0 12px 0'
           }}>
             Risk Statistics
@@ -291,28 +297,28 @@ export default function Heatmap() {
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#EF4444', boxShadow: '0 0 8px #EF4444' }} />
-              <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: '600' }}>
-                HIGH: <span style={{ color: '#EF4444', fontWeight: '700' }}>{highAlert.length}</span>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ff0000', boxShadow: '0 0 8px #ff6b6b' }} />
+              <span style={{ color: '#1f2937', fontSize: '13px', fontWeight: '600' }}>
+                HIGH: <span style={{ color: '#ff0000', fontWeight: '700' }}>{highAlert.length}</span>
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#F59E0B', boxShadow: '0 0 8px #F59E0B' }} />
-              <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: '600' }}>
-                MEDIUM: <span style={{ color: '#F59E0B', fontWeight: '700' }}>{mediumAlert.length}</span>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#ff8c00', boxShadow: '0 0 8px #ffd700' }} />
+              <span style={{ color: '#1f2937', fontSize: '13px', fontWeight: '600' }}>
+                MEDIUM: <span style={{ color: '#ff8c00', fontWeight: '700' }}>{mediumAlert.length}</span>
               </span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10B981', boxShadow: '0 0 8px #10B981' }} />
-              <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: '600' }}>
-                LOW: <span style={{ color: '#10B981', fontWeight: '700' }}>{lowAlert.length}</span>
+              <div style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#00cc44', boxShadow: '0 0 8px #90ee90' }} />
+              <span style={{ color: '#1f2937', fontSize: '13px', fontWeight: '600' }}>
+                LOW: <span style={{ color: '#00cc44', fontWeight: '700' }}>{lowAlert.length}</span>
               </span>
             </div>
             <div style={{
               marginTop: '12px',
               paddingTop: '12px',
-              borderTop: '1px solid rgba(255, 255, 255, 0.1)',
-              color: '#fbbf24',
+              borderTop: '1px solid #e0e0e0',
+              color: '#ff8c00',
               fontSize: '12px',
               fontWeight: '600'
             }}>
@@ -324,36 +330,36 @@ export default function Heatmap() {
 
       {/* Legend - Upgraded */}
       <div style={{
-        backgroundColor: 'rgba(0, 0, 0, 0.7)',
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(8px)',
-        borderTop: '1px solid rgba(255, 255, 255, 0.1)',
+        borderTop: '2px solid #e0e0e0',
         padding: '16px',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
         flexWrap: isMobile ? 'wrap' : 'nowrap',
         gap: '24px',
-        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.3)'
+        boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.1)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap', flex: 1 }}>
           {[
-            { level: 'HIGH', color: '#EF4444' },
-            { level: 'MEDIUM', color: '#F59E0B' },
-            { level: 'LOW', color: '#10B981' }
-          ].map(({ level, color }) => (
+            { level: 'HIGH', color: '#ff0000', glow: '#ff6b6b' },
+            { level: 'MEDIUM', color: '#ff8c00', glow: '#ffd700' },
+            { level: 'LOW', color: '#00cc44', glow: '#90ee90' }
+          ].map(({ level, color, glow }) => (
             <div key={level} style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <div style={{
                 width: '12px',
                 height: '12px',
                 borderRadius: '50%',
                 backgroundColor: color,
-                boxShadow: `0 0 12px ${color}`,
-                border: '2px solid rgba(255, 255, 255, 0.3)'
+                boxShadow: `0 0 12px ${glow}`,
+                border: '2px solid rgba(255, 255, 255, 0.5)'
               }} />
-              <span style={{ fontSize: '13px', color: '#ffffff', fontWeight: '500' }}>{level}</span>
+              <span style={{ fontSize: '13px', color: '#1f2937', fontWeight: '500' }}>{level}</span>
             </div>
           ))}
-          <span style={{ fontSize: '12px', color: '#888888' }}>• Circle size = scam volume</span>
+          <span style={{ fontSize: '12px', color: '#666666' }}>• Circle size = scam volume</span>
         </div>
 
         {/* Ticker */}
