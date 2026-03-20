@@ -104,15 +104,18 @@ export const del = async (url, config = {}, onRetry = null) => {
 /**
  * Keep-alive ping to prevent backend from sleeping
  * Should be called every 14 minutes
+ * This function is NON-BLOCKING and fails silently - never awaited
  */
-export const keepAlive = async () => {
-  try {
-    await axiosInstance.get("/", { timeout: 10000 });
-    console.log("[KeepAlive] Backend pinged successfully");
-  } catch (error) {
-    // Silently fail - this is just a background ping
-    console.log("[KeepAlive] Background ping failed (non-critical)");
-  }
+export const keepAlive = () => {
+  // Fire-and-forget - never block the app, no await
+  axiosInstance
+    .get("/", { timeout: 8000 })
+    .then(() => {
+      console.log("[KeepAlive] Backend pinged successfully");
+    })
+    .catch(() => {
+      // Silently fail - this is just a background maintenance ping
+    });
 };
 
 export default axiosInstance;

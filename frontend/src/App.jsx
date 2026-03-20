@@ -18,16 +18,22 @@ function AppContent() {
 
   // Keep-alive ping: Send a ping every 14 minutes to prevent Render backend from sleeping
   useEffect(() => {
-    // Send initial ping on mount
-    keepAlive();
+    // Fire initial ping after a short delay to avoid startup contention
+    // This ensures the home page and navbar load first
+    const initialPingTimeout = setTimeout(() => {
+      keepAlive();
+    }, 500);
 
     // Set up recurring ping every 14 minutes
     const keepAliveInterval = setInterval(() => {
       keepAlive();
     }, 14 * 60 * 1000); // 840000 ms = 14 minutes
 
-    // Cleanup interval on unmount
-    return () => clearInterval(keepAliveInterval);
+    // Cleanup
+    return () => {
+      clearTimeout(initialPingTimeout);
+      clearInterval(keepAliveInterval);
+    };
   }, []);
   
   return (

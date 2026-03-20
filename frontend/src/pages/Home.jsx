@@ -26,6 +26,10 @@ export default function Home() {
   const [error, setError] = useState("");
   const voiceRef = useRef(null);
 
+  // IMPORTANT: This page loads IMMEDIATELY without any backend health checks
+  // The form is always shown to users first. Errors only appear when the user
+  // tries to check a number and the API call fails.
+
   const handleCheck = async (overrideForm = null) => {
     const data = overrideForm || form;
     if (!data.mobile || !data.amount) { setError("Please enter mobile number and amount."); return; }
