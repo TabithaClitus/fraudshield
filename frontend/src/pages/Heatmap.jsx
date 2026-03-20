@@ -123,12 +123,18 @@ export default function Heatmap() {
           radius: radius * (colorConfig.radiusMultiplier + 400)
         }).addTo(map);
 
-        // Inner solid circle
+        // Inner solid circle - vibrant with new colors and opacity/weight
+        const circleColors = city.risk === 'HIGH'
+          ? { fill: '#ff0000', stroke: '#cc0000', fillOpacity: 0.5, weight: 2 }
+          : city.risk === 'MEDIUM'
+          ? { fill: '#ff8800', stroke: '#cc6600', fillOpacity: 0.5, weight: 2 }
+          : { fill: '#00cc44', stroke: '#009933', fillOpacity: 0.5, weight: 2 };
+        
         const innerCircle = L.circle([city.lat, city.lng], {
-          color: colorConfig.main,
-          fillColor: colorConfig.main,
-          fillOpacity: 0.7,
-          weight: 3,
+          color: circleColors.stroke,
+          fillColor: circleColors.fill,
+          fillOpacity: circleColors.fillOpacity,
+          weight: circleColors.weight,
           radius: radius * colorConfig.radiusMultiplier
         }).addTo(map);
 
@@ -143,20 +149,6 @@ export default function Heatmap() {
             className: 'pulse-circle'
           }).addTo(map);
         }
-
-        // Create city label using HTML marker
-        const labelHtml = `<div class="city-label">${city.name}</div>`;
-        const labelIcon = L.divIcon({
-          html: labelHtml,
-          iconSize: [100, 20],
-          iconAnchor: [50, 10],
-          className: 'city-label-icon'
-        });
-        
-        L.marker([city.lat, city.lng], {
-          icon: labelIcon,
-          interactive: false
-        }).addTo(map);
 
         // Build popup content
         const popupContent = `
@@ -244,12 +236,9 @@ export default function Heatmap() {
               display: 'flex',
               gap: '32px'
             }}>
-              {highAlert.map(c => `🚨 ${c.name}`).join(' • ')} &nbsp;&nbsp;&nbsp;&nbsp; {highAlert.map(c => `🚨 ${c.name}`).join(' • ')}
+              {highAlert.map(c => c.name).join(' • ')} &nbsp;&nbsp;&nbsp;&nbsp; {highAlert.map(c => c.name).join(' • ')}
             </div>
           </div>
-          <span style={{ marginLeft: 'auto', color: '#ffffff', fontSize: '11px', fontWeight: 'bold', flexShrink: 0, animation: 'blink 1s infinite' }}>
-            Active now
-          </span>
         </div>
       )}
 
@@ -276,20 +265,16 @@ export default function Heatmap() {
           top: '16px',
           right: '16px',
           backgroundColor: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(8px)',
-          border: '2px solid #e0e0e0',
-          borderRadius: '12px',
-          padding: '16px',
+          borderRadius: '8px',
+          padding: '12px 16px',
           zIndex: 1000,
           minWidth: '220px',
-          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.15)'
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.12)'
         }}>
           <p style={{
-            fontSize: '11px',
+            fontSize: '13px',
             fontWeight: '700',
-            textTransform: 'uppercase',
-            letterSpacing: '0.05em',
-            color: '#666666',
+            color: '#1f2937',
             margin: '0 0 12px 0'
           }}>
             Risk Statistics
@@ -362,20 +347,7 @@ export default function Heatmap() {
           <span style={{ fontSize: '12px', color: '#666666' }}>• Circle size = scam volume</span>
         </div>
 
-        {/* Ticker */}
-        <div style={{ display: isMobile ? 'none' : 'block', overflow: 'hidden', flex: 0.4, minWidth: '200px' }}>
-          <div style={{
-            fontSize: '12px',
-            color: '#fbbf24',
-            fontWeight: '500',
-            animation: 'smooth-scroll 28s linear infinite',
-            whiteSpace: 'nowrap',
-            display: 'inline-flex',
-            gap: '48px'
-          }}>
-            📊 Real-time monitoring 🚨 &nbsp; 📊 Real-time monitoring 🚨
-          </div>
-        </div>
+
       </div>
 
       <style>{`
